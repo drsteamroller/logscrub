@@ -6,6 +6,7 @@
 import random
 import re
 import sys
+import os
 
 # GLOBAL VARS
 # Log content is a list of dictionaries if one log is supplied, and if multiple are supplied,
@@ -124,7 +125,8 @@ def replace_ip6(ip):
         return ip
 
 options = {"-h": "Display this output",\
-           "-g": "Use this option if you are inputting a group of logs. Usage: py logscrub.py -g log1.log,log2.log3.log...",\
+           "-g": "Use this option if you are inputting a group of logs. Usage: py logscrub.py -g log1.log,log2.log3.log... <options",\
+           "-d": "Same as -g, but specifying a whole directory. Usage: py logscrub.py -d [path] <options>",\
            "-sPIP": "Scrub private IPs. Assumes /16 subnet",\
            "-pi":"preserve all ip addresses",\
            "-pv":"preserve vdom names",\
@@ -148,6 +150,10 @@ if ("-g" == args[1]):
     if (len(args) > 2):
         for x in args[3:]:
             opflags.append(x)
+elif ("-d" == args[1]):
+    for (dpath, dnames, fnames) in os.walk(args[2]):
+        h = [f"{dpath}\{fn}" for fn in fnames]
+        og_filenames.extend(h)
 else:
     og_filenames.append(args[1])
     if (len(args) > 2):
@@ -162,7 +168,8 @@ for filename in og_filenames:
         logfile_per_list = []
         for l in lines:
             elements = syslogregex.findall(l)
-            for e in elements:
+            print(elements)
+            for n, e in enumerate(elements):
                 logentry[e[0]] = e[1]
 
             logfile_per_list.append(logentry.copy())
@@ -171,6 +178,7 @@ for filename in og_filenames:
         logcontents.append(logfile_per_list.copy())
         logfile_per_list.clear()
 
+print(logcontents)
 # Walk through contents & scrub
 for l_off, logfile in enumerate(logcontents):
     for entry_off, logentry in enumerate(logfile):
@@ -260,9 +268,10 @@ for l_off, logfile in enumerate(logcontents):
         logfile[entry_off] = logentry.copy()
     logcontents[l_off] = logfile.copy()
 
-print(og_filenames)
-
 # Write modifications to scrubbed files
+
+if "-d" == args[1]:
+    og_filenames = [fn for (_, _2, filenames) in os.walk(args[2]) for fn in filenames]
 
 for c, fn in enumerate(og_filenames):
     with open(f"mod_{fn}", 'w') as modfile:
