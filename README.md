@@ -10,7 +10,8 @@ py | python | python3 logscrub.py [logfile] <options>
 ## Options
 ```
 -h: Display this output
--g: Use this option if you are inputting a group of logs. DIFFERENT USAGE: py logscrub.py -g log1.log,log2.log3.log... <---- Must be comma separated, with no spaces
+-g: Use this option if you are inputting a group of logs. DIFFERENT USAGE: py logscrub.py -g log1.log,log2.log3.log... <options> <---- Must be comma separated, with no spaces
+-d: Same as -g, but specifying a whole directory. Usage: py logscrub.py -d [path] <options>
 -sPIP: Scrub private IPs. Assumes /16 subnet
 -pi: preserve all ip addresses (overrides -sPIP)
 -pv: preserve vdom names
