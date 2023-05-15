@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Description - On the way
 # Author: Andrew McConnell
-# Date: 04/04/2023
+# Date:   04/04/2023
 
 import random
 import ipaddress
@@ -146,6 +146,67 @@ def repl_dicts_to_logfile(filename):
 			outfile.write(f"Original String: {og}\nMapped String: {rep}\n\n")
 		
 	print(f"Mapped address outfile written to: {filename}")
+
+def importMap(filename):
+	lines = []
+	with open(filename, 'r') as o:
+		lines = o.readlines()
+	
+	print(lines)
+
+	imp_ip = False
+	imp_mac = False
+	imp_str = False
+
+	OG = ""
+	for l in lines:
+		if '+---' in l:
+			if 'IP' in l:
+				imp_ip = True
+				imp_mac = False
+				imp_str = False
+			elif 'MAC' in l:
+				imp_ip = False
+				imp_mac = True
+				imp_str = False
+			elif 'STRING' in l:
+				imp_ip = False
+				imp_mac = False
+				imp_str = True
+			else:
+				print("Map file is improperly formatted, do not make changes to the map file unless you know what you are doing")
+				sys.exit(1)
+			continue
+
+		if not len(l):
+			continue
+
+		if imp_ip:
+			components = l.split(':')
+			if ('Original' in components[0]):
+				OG = components[1]
+			else:
+				ip_repl[OG] = components[1]
+				OG = ""
+		elif imp_mac:
+			components = l.split(':')
+			if ('Original' in components[0]):
+				OG = components[1]
+			else:
+				#mac_repl[OG] = components[1]
+				OG = ""
+		elif imp_str:
+			components = l.split(':')
+			if ('Original' in components[0]):
+				OG = components[1]
+			else:
+				str_repl[OG] = components[1]
+				OG = ""
+		
+		else:
+			print("Something went wrong, mappings might not be fully imported\n")
+			print(f"Interpreted mappings based on import\nIP Mapping: {ip_repl}\nMAC Mapping:\nString Mapping: {str_repl}\n")
+
 
 options = {"-h": "Display this output",\
 		   "-g": "Use this option if you are inputting a group of logs. Usage: py logscrub.py -g log1.log,log2.log3.log... <options",\
