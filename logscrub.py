@@ -4,7 +4,6 @@
 # Date:   04/04/2023
 
 import random
-import ipaddress
 import re
 import sys
 import os
@@ -15,6 +14,8 @@ import os
 logcontents = []
 # list of filenames
 og_filenames = []
+mod_filenames = []
+mod_dir = ""
 opflags = []
 str_repl = dict()
 ip_repl = dict()
@@ -147,6 +148,52 @@ def repl_dicts_to_logfile(filename):
 		
 	print(f"Mapped address outfile written to: {filename}")
 
+
+def buildDirTree(dir):
+	mod_dir = f"{dir}_obfuscated"
+
+	mtd = mod_dir
+
+	dirTree = next(os.walk(dir))[0]
+	slashes = dirTree.count('/') + dirTree.count('\\')
+
+	dirTree = []
+
+	for dirpath, dirnames, fnames in os.walk(dir):
+		check = f"{dirpath}"
+		
+		dirTree.append(check)
+
+	# Create new directory to house the modified files
+	os.makedirs(mod_dir, exist_ok=True)
+
+	moddirTree = dirTree.copy()
+	for i, path in enumerate(moddirTree):
+		a = re.search(dir, path)
+		moddirTree[i] = path[:a.span()[0]] + mod_dir + path[a.span()[1]:]
+
+		os.makedirs(moddirTree[i], exist_ok=True)
+	
+	return (mtd, dirTree)
+
+def getFiles(dirTree):
+	slash = '/'
+
+	files = []
+	# Gotta love Windows
+	if sys.platform == 'win32':
+		slash = '\\'
+	
+	# list comprehension ftw! dir + slash (/ or \) + filename
+	for dir in dirTree:
+		files.extend([f'{dir}{slash}{i}' for i in next(os.walk(dir))[2]])
+		if f'{dir}{slash}{args[0]}' in files:
+			print(f"\nERROR: You cannot perform a fedwalk on a directory containing {args[0]} (itself)\n\nexiting...\n")
+			sys.exit()
+	
+	return files
+
+
 def importMap(filename):
 	lines = []
 	with open(filename, 'r') as o:
@@ -184,23 +231,23 @@ def importMap(filename):
 		if imp_ip:
 			components = l.split(':')
 			if ('Original' in components[0]):
-				OG = components[1]
+				OG = components[1].strip()
 			else:
-				ip_repl[OG] = components[1]
+				ip_repl[OG] = components[1].strip()
 				OG = ""
 		elif imp_mac:
 			components = l.split(':')
 			if ('Original' in components[0]):
-				OG = components[1]
+				OG = components[1].strip()
 			else:
 				#mac_repl[OG] = components[1]
 				OG = ""
 		elif imp_str:
 			components = l.split(':')
 			if ('Original' in components[0]):
-				OG = components[1]
+				OG = components[1].strip()
 			else:
-				str_repl[OG] = components[1]
+				str_repl[OG] = components[1].strip()
 				OG = ""
 		
 		else:
@@ -219,7 +266,7 @@ options = {"-h": "Display this output",\
 args = sys.argv
 
 if (len(args) < 2):
-	print("Usage: \n\tpy logscrub.py logfile.log [options]\nOR\n\tpy logscrub.py -g log1.log,log2.log,...")
+	print("Usage: \n\tpy logscrub.py logfile.log [options]\nOR\n\tpy logscrub.py -g log1.log,log2.log,... [options]\nOR\n\tpy logscrub.py -d <directory> [options]")
 	sys.exit()
 
 if ('-h' in args[1]):
@@ -234,9 +281,13 @@ if ("-g" == args[1]):
 		for x in args[3:]:
 			opflags.append(x)
 elif ("-d" == args[1]):
-	for (dpath, dnames, fnames) in os.walk(args[2]):
-		h = [f"{dpath}\{fn}" for fn in fnames]
-		og_filenames.extend(h)
+	dt = buildDirTree(args[2])
+	mod_dir = dt[0]
+	dirtree = dt[1]
+	og_filenames = getFiles(dirtree)
+	print(og_filenames)
+	for x in args[3:]:
+		opflags.append(x)
 else:
 	og_filenames.append(args[1])
 	if (len(args) > 2):
@@ -276,28 +327,29 @@ for l_off, logfile in enumerate(logcontents):
 					logentry["user"] = str_repl[logentry['user']]
 
 			# ip addresses (also under"ui" & msg)
-			if ("srcip" in logentry.keys() or "dstip" in logentry.keys()):
-					if (':' in logentry["srcip"]):
-						if ("\"" in logentry['srcip']):
-							logentry["srcip"] = f'"{replace_ip6(logentry["srcip"][1:-1])}"'
-						else:
-							logentry["srcip"] = replace_ip6(logentry["srcip"])
+			if ("srcip" in logentry.keys()):
+				if (':' in logentry["srcip"]):
+					if ("\"" in logentry['srcip']):
+						logentry["srcip"] = f'"{replace_ip6(logentry["srcip"][1:-1])}"'
 					else:
-						if ("\"" in logentry['srcip']):
-							logentry["srcip"] = f'"{replace_ip4(logentry["srcip"][1:-1])}"'
-						else:
-							logentry["srcip"] = replace_ip4(logentry["srcip"])
+						logentry["srcip"] = replace_ip6(logentry["srcip"])
+				else:
+					if ("\"" in logentry['srcip']):
+						logentry["srcip"] = f'"{replace_ip4(logentry["srcip"][1:-1])}"'
+					else:
+						logentry["srcip"] = replace_ip4(logentry["srcip"])
 
-					if (':' in logentry["dstip"]):
-						if ("\"" in logentry['dstip']):
-							logentry["dstip"] = f'"{replace_ip6(logentry["dstip"][1:-1])}"'
-						else:
-							logentry["dstip"] = replace_ip6(logentry["dstip"])
+			if ("dstip" in logentry.keys()):
+				if (':' in logentry["dstip"]):
+					if ("\"" in logentry['dstip']):
+						logentry["dstip"] = f'"{replace_ip6(logentry["dstip"][1:-1])}"'
 					else:
-						if ("\"" in logentry['dstip']):
-							logentry["dstip"] = f'"{replace_ip4(logentry["dstip"][1:-1])}"'
-						else:
-							logentry["dstip"] = replace_ip4(logentry["dstip"])
+						logentry["dstip"] = replace_ip6(logentry["dstip"])
+				else:
+					if ("\"" in logentry['dstip']):
+						logentry["dstip"] = f'"{replace_ip4(logentry["dstip"][1:-1])}"'
+					else:
+						logentry["dstip"] = replace_ip4(logentry["dstip"])
 
 			if ("ui" in logentry.keys()):
 				ip_search = ip4.search(logentry['ui'])
@@ -338,6 +390,7 @@ for l_off, logfile in enumerate(logcontents):
 		
 		except (KeyError, IndexError) as e:
 			print("Incomplete log")
+			print(f'{e}\n{logfile}\n{logentry}')
 
 		logfile[entry_off] = logentry.copy()
 	logcontents[l_off] = logfile.copy()
@@ -345,10 +398,12 @@ for l_off, logfile in enumerate(logcontents):
 # Write modifications to scrubbed files
 
 if "-d" == args[1]:
-	og_filenames = [fn for (_, _2, filenames) in os.walk(args[2]) for fn in filenames]
+	for f in og_filenames:
+		a = re.search(args[2], f)
+		mod_filenames.append(f[:a.span()[0]] + mod_dir + f[a.span()[1]:])
 
-for c, fn in enumerate(og_filenames):
-	with open(f"mod_{fn}", 'w') as modfile:
+for c, fn in enumerate(mod_filenames):
+	with open(fn, 'w') as modfile:
 		for d in logcontents[c]:
 			for b, a in d.items():
 				modfile.write(f"{b}={a} ")
