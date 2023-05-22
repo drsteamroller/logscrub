@@ -4,7 +4,11 @@ Scrubs logs directly downloaded directly from FortiGate/FortiAnalyzer/FortiManag
 
 ## Usage
 ```
-py | python | python3 logscrub.py [logfile] <options>
+python logscrub.py <logfile> [options]
+OR
+python logscrub.py -g <logfile1,logfile2,...> [options]
+OR
+python logscrub.py -d <directory> [options]
 ```
 
 ## Options

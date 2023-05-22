@@ -261,7 +261,9 @@ options = {"-h": "Display this output",\
 		   "-sPIP": "Scrub private IPs. Assumes /16 subnet",\
 		   "-pi":"preserve all ip addresses",\
 		   "-pv":"preserve vdom names",\
-		   "-pd":"preserve device names"}
+		   "-pd":"preserve device names",\
+		   "-map=<mapfilename>":"Import IP/MAC/String mappings from other FFI program output"}
+
 
 args = sys.argv
 
@@ -293,6 +295,17 @@ else:
 	if (len(args) > 2):
 		for x in args[2:]:
 			opflags.append(x)
+			if ("map=" in x):
+				try:
+					fn = x.split('=')[1]
+					importMap(fn)
+				except FileNotFoundError as e:
+					print(f"Could not find file/path specified: '{fn}'")
+				except IndexError:
+					print("-map option needs to be formatted like so:\n\t-map=<filename>")
+				except:
+					print("Something went wrong when importing mapfile (-map=<file> option)")
+
 
 # Load contents
 for filename in og_filenames:
