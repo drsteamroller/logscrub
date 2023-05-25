@@ -287,7 +287,6 @@ elif ("-d" == args[1]):
 	mod_dir = dt[0]
 	dirtree = dt[1]
 	og_filenames = getFiles(dirtree)
-	print(og_filenames)
 	for x in args[3:]:
 		opflags.append(x)
 else:
